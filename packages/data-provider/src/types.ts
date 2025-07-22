@@ -188,6 +188,7 @@ export type TUser = {
   avatar: string;
   role: string;
   provider: string;
+  lightdashUuid?: string;
   plugins?: string[];
   twoFactorEnabled?: boolean;
   backupCodes?: TBackupCode[];

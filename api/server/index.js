@@ -58,7 +58,10 @@ const startServer = async () => {
   app.use(express.json({ limit: '3mb' }));
   app.use(express.urlencoded({ extended: true, limit: '3mb' }));
   app.use(mongoSanitize());
-  app.use(cors());
+  app.use(cors({
+    origin: ['http://lightdash:8080', 'https://your-lightdash-domain.com'],
+    credentials: true,  // Important for cookies
+  }));
   app.use(cookieParser());
 
   if (!isEnabled(DISABLE_COMPRESSION)) {
@@ -80,6 +83,12 @@ const startServer = async () => {
   app.use(passport.initialize());
   passport.use(jwtLogin());
   passport.use(passportLogin());
+
+  /* Lightdash Integration */
+  const lightdashIntegrationEnabled = isEnabled(process.env.LIGHTDASH_INTEGRATION_ENABLED);
+  if (lightdashIntegrationEnabled) {
+    console.log('Lightdash integration is enabled');
+  }
 
   /* LDAP Auth */
   if (process.env.LDAP_URL && process.env.LDAP_USER_SEARCH_BASE) {
@@ -118,6 +127,7 @@ const startServer = async () => {
   app.use('/api/banner', routes.banner);
   app.use('/api/memories', routes.memories);
   app.use('/api/tags', routes.tags);
+  app.use('/api/lightdash', routes.lightdash);
   app.use('/api/mcp', routes.mcp);
 
   // Add the error controller one more time after all routes

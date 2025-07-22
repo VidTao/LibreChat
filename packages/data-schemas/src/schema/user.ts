@@ -105,6 +105,11 @@ const userSchema = new Schema<IUser>(
       unique: true,
       sparse: true,
     },
+    lightdashUuid: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     plugins: {
       type: Array,
     },

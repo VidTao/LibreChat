@@ -26,6 +26,7 @@ const edit = require('./edit');
 const keys = require('./keys');
 const user = require('./user');
 const mcp = require('./mcp');
+const lightdash = require('./lightdash');
 
 module.exports = {
   edit,
@@ -55,5 +56,6 @@ module.exports = {
   assistants,
   categories,
   staticRoute,
+  lightdash,
   mcp,
 };

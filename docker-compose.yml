@@ -3,13 +3,15 @@
 
 services:
   api:
-    container_name: LibreChat
+    container_name: librechat
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "${PORT}:${PORT}"
     depends_on:
       - mongodb
       - rag_api
-    image: ghcr.io/danny-avila/librechat-dev:latest
     restart: always
     user: "${UID}:${GID}"
     extra_hosts:
@@ -20,18 +22,32 @@ services:
       - MEILI_HOST=http://meilisearch:7700
       - RAG_PORT=${RAG_PORT:-8000}
       - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
+      # Lightdash Integration Variables
+      - LIGHTDASH_INTEGRATION_ENABLED=${LIGHTDASH_INTEGRATION_ENABLED:-false}
+      - LIGHTDASH_URL=${LIGHTDASH_URL:-http://lightdash-dev:8080}
+      - LIGHTDASH_API_KEY=${LIGHTDASH_API_KEY:-}
+      # JWT Secret for authentication
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_EXPIRY=${SESSION_EXPIRY:-7d}
     volumes:
       - type: bind
         source: ./.env
         target: /app/.env
+      - ./librechat.yaml:/app/librechat.yaml
+      - ./bratrax-78c5b6786fc2.json:/app/bratrax-78c5b6786fc2.json
       - ./images:/app/client/public/images
       - ./uploads:/app/uploads
       - ./logs:/app/api/logs
+    networks:
+      - default
+      - shared_network
   mongodb:
     container_name: chat-mongodb
     image: mongo
     restart: always
     user: "${UID}:${GID}"
+    ports:
+      - "27017:27017"
     volumes:
       - ./data-node:/data/db
     command: mongod --noauth
@@ -70,3 +86,9 @@ services:
 
 volumes:
   pgdata2:
+
+networks:
+  default:
+  shared_network:
+    name: lightdash_librechat_network
+    external: true

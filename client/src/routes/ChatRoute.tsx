@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Constants, EModelEndpoint } from 'librechat-data-provider';
 import { useGetModelsQuery } from 'librechat-data-provider/react-query';
 import type { TPreset } from 'librechat-data-provider';
@@ -13,10 +13,20 @@ import temporaryStore from '~/store/temporary';
 import { Spinner } from '~/components/svg';
 import { useRecoilCallback } from 'recoil';
 import store from '~/store';
+import { useLightdashAuth } from '~/hooks/useLightdashAuth';
 
 export default function ChatRoute() {
   const { data: startupConfig } = useGetStartupConfig();
   const { isAuthenticated, user } = useAuthRedirect();
+  const navigate = useNavigate();
+
+  // Add Lightdash authentication check
+  const {
+    isLightdashEnabled,
+    authStatus,
+    loading: lightdashLoading,
+    hasChecked
+  } = useLightdashAuth();
 
   const setIsTemporary = useRecoilCallback(
     ({ set }) =>
@@ -45,6 +55,26 @@ export default function ChatRoute() {
   const assistantListMap = useAssistantListMap();
 
   const isTemporaryChat = conversation && conversation.expiredAt ? true : false;
+
+  // Add Lightdash authentication redirect logic
+  useEffect(() => {
+    console.log('ChatRoute auth check:', {
+      isAuthenticated,
+      isLightdashEnabled,
+      hasChecked,
+      lightdashLoading,
+      authStatus: authStatus?.authenticated
+    });
+    
+    if (isAuthenticated && isLightdashEnabled && hasChecked && !lightdashLoading) {
+      if (!authStatus?.authenticated) {
+        console.log('Redirecting to login: LibreChat authenticated but Lightdash not authenticated');
+        navigate('/login', { replace: true });
+      } else {
+        console.log('All good: authenticated in both LibreChat and Lightdash');
+      }
+    }
+  }, [isAuthenticated, isLightdashEnabled, authStatus, hasChecked, lightdashLoading, navigate]);
 
   useEffect(() => {
     if (conversationId !== Constants.NEW_CONVO && !isTemporaryChat) {
@@ -120,6 +150,16 @@ export default function ChatRoute() {
     modelsQuery.data,
     assistantListMap,
   ]);
+
+  // Add Lightdash loading check BEFORE other loading checks
+  if (isAuthenticated && isLightdashEnabled && !hasChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center" aria-live="polite" role="status">
+        <Spinner className="text-text-primary" />
+        <span className="ml-2">Checking authentication...</span>
+      </div>
+    );
+  }
 
   if (endpointsQuery.isLoading || modelsQuery.isLoading) {
     return (

@@ -23,6 +23,7 @@ import {
 import { TAuthConfig, TUserContext, TAuthContext, TResError } from '~/common';
 import useTimeout from './useTimeout';
 import store from '~/store';
+// No useLightdashAuth import needed here
 
 const AuthContext = createContext<TAuthContext | undefined>(undefined);
 
@@ -202,6 +203,51 @@ const AuthContextProvider = ({
       window.removeEventListener('tokenUpdated', handleTokenUpdate);
     };
   }, [setUserContext, user]);
+
+  useEffect(() => {
+    const handleLightdashAuth = async (event) => {
+      console.log('Received Lightdash authentication event', event.detail);
+      const { user, lightdashUser } = event.detail;
+      
+      try {
+        // Instead of using a placeholder token, call the actual login endpoint
+        const response = await fetch('/api/auth/lightdash-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            lightdashUser: lightdashUser,
+            user: user
+          }),
+        });
+
+        if (response.ok) {
+          const authData = await response.json();
+          
+          // Use the real token and user data from the response
+          setUserContext({ 
+            token: authData.token, // Real token
+            isAuthenticated: true, 
+            user: authData.user, // Real user data
+            redirect: '/c/new' 
+          });
+          
+          console.log('Successfully authenticated with LibreChat via Lightdash');
+        } else {
+          console.error('Failed to authenticate with LibreChat via Lightdash');
+        }
+      } catch (error) {
+        console.error('Error during Lightdash authentication:', error);
+      }
+    };
+
+    window.addEventListener('lightdashAuthenticated', handleLightdashAuth);
+
+    return () => {
+      window.removeEventListener('lightdashAuthenticated', handleLightdashAuth);
+    };
+  }, [setUserContext]);
 
   // Make the provider update only when it should
   const memoedValue = useMemo(
