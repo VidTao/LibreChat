@@ -42,12 +42,22 @@ function Login() {
 
   // ===== ALL EFFECTS AFTER ALL STATE HOOKS =====
   
-  // If user is already authenticated in LibreChat, redirect to chat
+  // FIXED: Only redirect if NOT using Lightdash or if Lightdash auth is also valid
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/c/new', { replace: true });
+      // If Lightdash is enabled, only redirect if BOTH auths are valid
+      if (isLightdashEnabled && hasChecked) {
+        if (authStatus?.authenticated) {
+          // Both LibreChat and Lightdash authenticated → go to chat
+          navigate('/c/new', { replace: true });
+        }
+        // If only LibreChat auth (but no Lightdash) → stay on login, don't redirect
+      } else if (!isLightdashEnabled) {
+        // Lightdash disabled → use LibreChat auth only
+        navigate('/c/new', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLightdashEnabled, hasChecked, authStatus, navigate]);
 
   // Once the disable flag is detected, update local state and remove the parameter from the URL.
   useEffect(() => {
@@ -81,7 +91,7 @@ function Login() {
   // Show Bratrax login required UI
   if (!isAuthenticated && isLightdashEnabled && hasChecked && !authStatus?.authenticated) {
     const handleLoginClick = () => {
-      const lightdashUrl = process.env.REACT_APP_LIGHTDASH_URL || 'http://localhost:3000';
+      const lightdashUrl = process.env.LIGHTDASH_URL || 'https://v2.bratrax.com';
       window.open(`${lightdashUrl}/login`, '_blank', 'noopener,noreferrer');
     };
 
