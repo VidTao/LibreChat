@@ -98,6 +98,13 @@ export default function useSideNavLinks({
         Component: AgentPanelSwitch,
       });
     }
+    else{
+      console.log('1 - mrkela', endpointsConfig?.[EModelEndpoint.agents])
+      console.log('2 - mrkela', hasAccessToAgents)
+      console.log('3 - mrkela', hasAccessToCreateAgents)
+      console.log('4 - mrkela', endpointsConfig[EModelEndpoint.agents]?.disableBuilder !== true)
+    }
+
 
     if (hasAccessToPrompts) {
       links.push({

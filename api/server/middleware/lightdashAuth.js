@@ -107,28 +107,31 @@ const createLibrechatUserFromLightdash = async (lightdashUser) => {
  */
 const optionalLightdashAuth = async (req, res, next) => {
   try {
-    // Read from environment variable (not hardcoded!)
     const lightdashUrl = process.env.LIGHTDASH_URL || 'http://localhost:3000';
     
-    // Forward the cookies from the request to Lightdash
+    // Parse all cookies
     const cookies = req.headers.cookie || '';
+    const parsedCookies = require('cookie').parse(cookies);
     
-    console.log('Calling Lightdash at:', `${lightdashUrl}/api/v1/user`);
-    console.log('Forwarding cookies:', cookies);
+    // Look for the Lightdash session cookie specifically from .bratrax.com domain
+    const allCookies = Object.entries(parsedCookies).map(([name, value]) => `${name}=${value}`).join('; ');
     
-    // Check authentication status with Lightdash
+    console.log('All cookies:', allCookies);
+    console.log('Parsed cookies:', parsedCookies);
+    
+    // Forward all cookies (browser will send the right one based on domain)
     const response = await axios.get(`${lightdashUrl}/api/v1/user`, {
       headers: {
-        'Cookie': cookies,
+        'Cookie': allCookies,
         'Content-Type': 'application/json'
       },
       timeout: 5000,
-      validateStatus: (status) => status < 500 // Don't throw on 4xx errors
+      validateStatus: (status) => status < 500
     });
 
     console.log('Lightdash response status:', response.status);
     console.log('Lightdash response data:', response.data);
-
+    
     // Use consistent response parsing (same as checkLightdashAuth)
     if (response.status === 200 && response.data?.results) {
       const lightdashUser = response.data.results;
