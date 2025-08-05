@@ -24,7 +24,7 @@ services:
       - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
       # Lightdash Integration Variables
       - LIGHTDASH_INTEGRATION_ENABLED=${LIGHTDASH_INTEGRATION_ENABLED:-false}
-      - LIGHTDASH_URL=${LIGHTDASH_URL:-https://v2.bratrax.com}
+      - LIGHTDASH_URL=${LIGHTDASH_URL:-https://bratrax.com}
       - LIGHTDASH_API_KEY=${LIGHTDASH_API_KEY:-}
       # JWT Secret for authentication
       - JWT_SECRET=${JWT_SECRET}

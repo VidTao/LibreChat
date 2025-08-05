@@ -91,7 +91,7 @@ function Login() {
   // Show Bratrax login required UI
   if (!isAuthenticated && isLightdashEnabled && hasChecked && !authStatus?.authenticated) {
     const handleLoginClick = () => {
-      const lightdashUrl = process.env.LIGHTDASH_URL || 'https://v2.bratrax.com';
+      const lightdashUrl = process.env.LIGHTDASH_URL || 'https://bratrax.com';
       window.open(`${lightdashUrl}/login`, '_blank', 'noopener,noreferrer');
     };
 
