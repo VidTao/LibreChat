@@ -2,28 +2,13 @@
 # Refer to `docker-compose.override.yaml.example' for some sample configurations.
 
 services:
-  nginx:
-    image: nginx:alpine
-    container_name: librechat-nginx
-    ports:
-      - "8080:80"   # LibreChat HTTP
-      - "8443:443"  # LibreChat HTTPS
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl-certs:/etc/nginx/ssl:ro
-    depends_on:
-      - api
-    restart: unless-stopped
-    networks:
-      - default
-      - shared_network
   api:
     container_name: librechat
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3080:3080"  # Expose LibreChat directly
+      - "3080:3080"  # Back to original
     depends_on:
       - mongodb
       - rag_api
@@ -71,7 +56,6 @@ services:
       MONGO_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - ./data-node:/data/db
-    command: mongod --noauth
   meilisearch:
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.12.3
