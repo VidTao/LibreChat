@@ -10,6 +10,8 @@ import remarkDirective from 'remark-directive';
 import type { Pluggable } from 'unified';
 import { Citation, CompositeCitation, HighlightedText } from '~/components/Web/Citation';
 import { Artifact, artifactPlugin } from '~/components/Artifacts/Artifact';
+import { LightdashVisualization } from '~/components/Lightdash/LightdashVisualization';
+import { lightdashPlugin } from '~/components/Lightdash/lightdashPlugin';
 import { ArtifactProvider, CodeBlockProvider } from '~/Providers';
 import MarkdownErrorBoundary from './MarkdownErrorBoundary';
 import { langSubset, preprocessLaTeX } from '~/utils';
@@ -53,6 +55,7 @@ const Markdown = memo(({ content = '', isLatestMessage }: TContentProps) => {
     remarkGfm,
     remarkDirective,
     artifactPlugin,
+    lightdashPlugin,
     [remarkMath, { singleDollarTextMath: false }],
     unicodeCitation,
   ];
@@ -82,6 +85,8 @@ const Markdown = memo(({ content = '', isLatestMessage }: TContentProps) => {
                 a,
                 p,
                 artifact: Artifact,
+                'lightdash-chart': LightdashVisualization,
+                'lightdash-dashboard': LightdashVisualization,
                 citation: Citation,
                 'highlighted-text': HighlightedText,
                 'composite-citation': CompositeCitation,
