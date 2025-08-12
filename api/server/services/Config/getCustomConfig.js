@@ -5,6 +5,7 @@ const { normalizeEndpointName } = require('~/server/utils');
 const loadCustomConfig = require('./loadCustomConfig');
 const { getCachedTools } = require('./getCachedTools');
 const getLogStores = require('~/cache/getLogStores');
+const { Constants } = require('librechat-data-provider');
 
 /**
  * Retrieves the configuration object
@@ -63,18 +64,48 @@ const getCustomEndpointConfig = async (endpoint) => {
  */
 async function getMCPAuthMap({ userId, tools, findPluginAuthsByKeys }) {
   try {
+    // FALLBACK: If no tools provided, get all MCP servers with customUserVars
     if (!tools || tools.length === 0) {
-      return;
+      const customConfig = await getCustomConfig();
+      const mcpServers = customConfig?.mcpServers || {};
+      
+      // Find all MCP servers that have customUserVars
+      const mcpServerNames = Object.entries(mcpServers)
+        .filter(([, serverConfig]) => 
+          serverConfig.customUserVars && Object.keys(serverConfig.customUserVars).length > 0
+        )
+        .map(([serverName]) => `${Constants.mcp_prefix}${serverName}`);
+      
+      if (mcpServerNames.length > 0) {
+        // Use findPluginAuthsByKeys directly instead of getPluginAuthMap
+        const pluginAuths = await findPluginAuthsByKeys({ userId, pluginKeys: mcpServerNames });
+        
+        // Build the auth map manually
+        const authMap = {};
+        for (const auth of pluginAuths) {
+          if (!authMap[auth.pluginKey]) {
+            authMap[auth.pluginKey] = {};
+          }
+          authMap[auth.pluginKey][auth.authField] = auth.value;
+        }
+        
+        return authMap;
+      }
+      
+      return {};
     }
-    const appTools = await getCachedTools({
-      userId,
-    });
-    return await getUserMCPAuthMap({
+    
+    // Original logic for when tools are provided...
+    const appTools = await getCachedTools({ userId });
+    
+    const result = await getUserMCPAuthMap({
       tools,
       userId,
       appTools,
       findPluginAuthsByKeys,
     });
+    
+    return result;
   } catch (err) {
     logger.error(
       `[api/server/controllers/agents/client.js #chatCompletion] Error getting custom user vars for agent`,
