@@ -141,12 +141,17 @@ const getAvailableTools = async (req, res) => {
     const cache = getLogStores(CacheKeys.CONFIG_STORE);
     const cachedToolsArray = await cache.get(CacheKeys.TOOLS);
     if (cachedToolsArray) {
+      console.log('🔍 [DEBUG] Returning cached tools, count:', cachedToolsArray.length);
+      console.log('🔍 [DEBUG] MCP tools in cache:', cachedToolsArray.filter(t => t.pluginKey?.includes('mcp')).map(t => t.pluginKey));
       res.status(200).json(cachedToolsArray);
       return;
     }
 
     let pluginManifest = availableTools;
     const customConfig = await getCustomConfig();
+    console.log('🔍 [DEBUG] Custom config has mcpServers:', !!customConfig?.mcpServers);
+    console.log('🔍 [DEBUG] MCP servers in config:', Object.keys(customConfig?.mcpServers || {}));
+    
     if (customConfig?.mcpServers != null) {
       const mcpManager = getMCPManager();
       const flowsCache = getLogStores(CacheKeys.FLOWS);
@@ -158,11 +163,15 @@ const getAvailableTools = async (req, res) => {
         serverToolsCallback,
         getServerTools,
       });
+      console.log('🔍 [DEBUG] MCP tools loaded:', mcpTools.length);
+      console.log('🔍 [DEBUG] MCP tool keys:', mcpTools.map(t => t.pluginKey));
       pluginManifest = [...mcpTools, ...pluginManifest];
     }
 
     /** @type {TPlugin[]} */
     const uniquePlugins = filterUniquePlugins(pluginManifest);
+    console.log('🔍 [DEBUG] Unique plugins after filter:', uniquePlugins.length);
+    console.log('🔍 [DEBUG] MCP plugins after filter:', uniquePlugins.filter(p => p.pluginKey?.includes('mcp')).map(p => p.pluginKey));
 
     const authenticatedPlugins = uniquePlugins.map((plugin) => {
       if (checkPluginAuth(plugin)) {
@@ -173,6 +182,8 @@ const getAvailableTools = async (req, res) => {
     });
 
     const toolDefinitions = (await getCachedTools({ includeGlobal: true })) || {};
+    console.log('🔍 [DEBUG] Tool definitions count:', Object.keys(toolDefinitions).length);
+    console.log('🔍 [DEBUG] MCP tool definitions:', Object.keys(toolDefinitions).filter(k => k.includes('mcp')));
 
     const toolsOutput = [];
     for (const plugin of authenticatedPlugins) {
@@ -181,7 +192,10 @@ const getAvailableTools = async (req, res) => {
         plugin.toolkit === true &&
         Object.keys(toolDefinitions).some((key) => getToolkitKey(key) === plugin.pluginKey);
 
+      console.log(`🔍 [DEBUG] Processing plugin: ${plugin.pluginKey}, isDefined: ${isToolDefined}, isToolkit: ${isToolkit}`);
+
       if (!isToolDefined && !isToolkit) {
+        console.log(`🔍 [DEBUG] Skipping ${plugin.pluginKey} - not defined and not toolkit`);
         continue;
       }
 
@@ -192,20 +206,26 @@ const getAvailableTools = async (req, res) => {
         continue;
       }
 
+      console.log(`🔍 [DEBUG] Processing MCP plugin: ${plugin.pluginKey}`);
       const parts = plugin.pluginKey.split(Constants.mcp_delimiter);
       const serverName = parts[parts.length - 1];
       const serverConfig = customConfig?.mcpServers?.[serverName];
+      
+      console.log(`🔍 [DEBUG] Server name: ${serverName}, has config: ${!!serverConfig}, has customUserVars: ${!!serverConfig?.customUserVars}`);
 
       if (!serverConfig?.customUserVars) {
+        console.log(`🔍 [DEBUG] No customUserVars for ${serverName}, adding tool directly`);
         toolsOutput.push(toolToAdd);
         continue;
       }
 
       const customVarKeys = Object.keys(serverConfig.customUserVars);
+      console.log(`🔍 [DEBUG] CustomUserVars keys for ${serverName}:`, customVarKeys);
 
       if (customVarKeys.length === 0) {
         toolToAdd.authConfig = [];
         toolToAdd.authenticated = true;
+        console.log(`🔍 [DEBUG] Empty customUserVars for ${serverName}, setting authenticated=true`);
       } else {
         toolToAdd.authConfig = Object.entries(serverConfig.customUserVars).map(([key, value]) => ({
           authField: key,
@@ -213,10 +233,14 @@ const getAvailableTools = async (req, res) => {
           description: value.description || '',
         }));
         toolToAdd.authenticated = false;
+        console.log(`🔍 [DEBUG] Set authConfig for ${serverName}:`, toolToAdd.authConfig);
       }
 
       toolsOutput.push(toolToAdd);
     }
+
+    console.log('🔍 [DEBUG] Final tools output count:', toolsOutput.length);
+    console.log('🔍 [DEBUG] Final MCP tools:', toolsOutput.filter(t => t.pluginKey?.includes('mcp')).map(t => ({ key: t.pluginKey, auth: t.authenticated, chatMenu: t.chatMenu })));
 
     const finalTools = filterUniquePlugins(toolsOutput);
     await cache.set(CacheKeys.TOOLS, finalTools);

@@ -8,9 +8,55 @@ const router = express.Router();
  * GET /api/lightdash/auth-status
  * Check if user is authenticated with Lightdash
  */
-router.get('/auth-status', optionalLightdashAuth, (req, res) => {
+router.get('/auth-status', optionalLightdashAuth, async (req, res) => {
   try {
     if (req.user && req.lightdashUser) {
+      // Get user-specific Lightdash credentials for MCP
+      let mcpCredentials = {};
+      
+      try {
+        // Call Lightdash API to get user's MCP credentials
+        const axios = require('axios');
+        const lightdashUrl = process.env.LIGHTDASH_URL || 'http://localhost:8080';
+        
+        // Parse all cookies (same as optionalLightdashAuth)
+        const cookies = req.headers.cookie || '';
+        const parsedCookies = require('cookie').parse(cookies);
+        const allCookies = Object.entries(parsedCookies).map(([name, value]) => `${name}=${value}`).join('; ');
+        
+        console.log('MCP request cookies:', allCookies);
+        
+        // Make the request exactly like the working middleware
+        const mcpResponse = await axios.get(`${lightdashUrl}/api/v1/user/mcp-credentials`, {
+          headers: {
+            'Cookie': allCookies,  // ← Same as working middleware
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000,
+          validateStatus: (status) => status < 500  // ← Same as working middleware
+        });
+        
+        console.log('mcpResponse status:', mcpResponse.status);
+        console.log('mcpResponse data:', mcpResponse.data);
+        
+        // Check for successful response (same pattern as middleware)
+        if (mcpResponse.status === 200 && mcpResponse.data?.results) {
+          mcpCredentials = {
+            lightdashApiKey: mcpResponse.data.results.apiKey,
+            projectId: mcpResponse.data.results.projectId,
+            defaultSpaceId: mcpResponse.data.results.defaultSpaceId,
+          };
+        }
+      } catch (mcpError) {
+        logger.error('[lightdash/auth-status] Failed to get MCP credentials:', mcpError);
+        // Fallback to default values or user-specific data you might have
+        mcpCredentials = {
+          lightdashApiKey: req.lightdashUser.personalAccessToken, // If stored
+          projectId: req.lightdashUser.defaultProjectId, // If stored
+          defaultSpaceId: 'c4bc8fa6-d460-488b-8aff-d66b027d1318', // Fallback
+        };
+      }
+
       return res.json({
         authenticated: true,
         user: {
@@ -25,7 +71,8 @@ router.get('/auth-status', optionalLightdashAuth, (req, res) => {
           lastName: req.lightdashUser.lastName,
           email: req.lightdashUser.email,
           organizationName: req.lightdashUser.organizationName
-        }
+        },
+        mcpCredentials: mcpCredentials // ✅ Add MCP credentials
       });
     } else {
       return res.json({
