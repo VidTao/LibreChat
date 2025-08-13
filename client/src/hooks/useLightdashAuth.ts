@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useAuthContext } from './AuthContext'; // ← Add this import
 
 export const useLightdashAuth = () => {
   const [isLightdashEnabled, setIsLightdashEnabled] = useState(false);
@@ -7,6 +8,8 @@ export const useLightdashAuth = () => {
   const [loading, setLoading] = useState(true);
   const [hasChecked, setHasChecked] = useState(false);
   const mountedRef = useRef(true);
+  
+  const { isAuthenticated, token } = useAuthContext(); // ← Get LibreChat auth state
 
   useEffect(() => {
     let isCancelled = false;
@@ -68,6 +71,35 @@ export const useLightdashAuth = () => {
       mountedRef.current = false;
     };
   }, []); // Empty dependency array - only run once on mount
+
+  // ✅ NEW: Save MCP credentials after LibreChat authentication is complete
+  useEffect(() => {
+    const saveMcpCredentials = async () => {
+      // Wait for both Lightdash and LibreChat to be authenticated
+      if (!isAuthenticated || !token || !authStatus?.authenticated || !authStatus?.mcpCredentials) {
+        return;
+      }
+
+      const { mcpCredentials } = authStatus;
+      
+      try {
+        await axios.post('/api/user/plugins', {
+          pluginKey: 'mcp_dbt-mcp-lightdash',
+          action: 'install',
+          auth: {
+            MCP_LIGHTDASH_API_KEY: mcpCredentials.lightdashApiKey,
+            MCP_LIGHTDASH_PROJECT_ID: mcpCredentials.projectId,
+            MCP_LIGHTDASH_DEFAULT_SPACE_ID: mcpCredentials.defaultSpaceId,
+          }
+        });
+        console.log('✅ MCP credentials saved after LibreChat authentication');
+      } catch (error) {
+        console.warn('Failed to save MCP credentials:', error);
+      }
+    };
+
+    saveMcpCredentials();
+  }, [isAuthenticated, token, authStatus]); // ← Run when LibreChat auth or Lightdash auth changes
 
   return {
     isLightdashEnabled,
