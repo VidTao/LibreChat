@@ -11,62 +11,48 @@ const router = express.Router();
 router.get('/auth-status', optionalLightdashAuth, async (req, res) => {
   try {
     if (req.user && req.lightdashUser) {
-      // Get user-specific Lightdash credentials for MCP
-      let mcpCredentials = {};
-      
-      // Call Lightdash API to get user's MCP credentials
       const axios = require('axios');
       const lightdashUrl = process.env.LIGHTDASH_URL || 'http://localhost:8080';
       
-      // Parse all cookies (same as optionalLightdashAuth)
+      // Parse all cookies
       const cookies = req.headers.cookie || '';
       const parsedCookies = require('cookie').parse(cookies);
       const allCookies = Object.entries(parsedCookies).map(([name, value]) => `${name}=${value}`).join('; ');
       
-      console.log('MCP request cookies:', allCookies);
-      
-      // Make the request exactly like the working middleware
-      const mcpResponse = await axios.get(`${lightdashUrl}/api/v1/user/mcp-credentials`, {
-        headers: {
-          'Cookie': allCookies,  // ← Same as working middleware
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000,
-        validateStatus: (status) => status < 500  // ← Same as working middleware
-      });
-      
-      console.log('mcpResponse status:', mcpResponse.status);
-      console.log('mcpResponse data:', mcpResponse.data);
-      
-      // Check for successful response (same pattern as middleware)
-      if (mcpResponse.status === 200 && mcpResponse.data?.results) {
-        mcpCredentials = {
+      // Get all credentials in parallel
+      const [mcpResponse, credentialsResponse] = await Promise.all([
+        axios.get(`${lightdashUrl}/api/v1/user/mcp-credentials`, {
+          headers: {
+            'Cookie': allCookies,
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000,
+          validateStatus: (status) => status < 500
+        }),
+        axios.get(`${lightdashUrl}/api/v1/user/get-credential`, {
+          params: {
+            platform: 'Facebook',
+            fieldName: 'long_lived_fb_token'
+          },
+          headers: {
+            'Cookie': allCookies,
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000,
+          validateStatus: (status) => status < 500
+        })
+      ]);
+
+      // Construct mcpCredentials after getting all responses
+      const mcpCredentials = {};
+
+      if (mcpResponse.status === 200 && mcpResponse.data?.results && credentialsResponse.data?.results && credentialsResponse.data?.results) {
+        Object.assign(mcpCredentials, {
           lightdashApiKey: mcpResponse.data.results.apiKey,
           projectId: mcpResponse.data.results.projectId,
           defaultSpaceId: mcpResponse.data.results.defaultSpaceId,
-        };
-      }
-
-      // Call get-credentials endpoint for additional credentials
-      const credentialsResponse = await axios.get(`${lightdashUrl}/api/v1/user/get-credential`, {
-        params: {
-          platform: 'Facebook', // You can make this configurable
-          fieldName: 'long_lived_fb_token' // You can make this configurable
-        },
-        headers: {
-          'Cookie': allCookies,
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000,
-        validateStatus: (status) => status < 500
-      });
-
-      console.log('credentialsResponse status:', credentialsResponse.status);
-      console.log('credentialsResponse data:', credentialsResponse.data);
-
-      // Add the credentials data to mcpCredentials
-      if (credentialsResponse.status === 200 && credentialsResponse.data?.results) {
-        mcpCredentials.platformCredentials = credentialsResponse.data.results;
+          fbToken: credentialsResponse.data.results.fieldValue
+        });
       }
 
       return res.json({
