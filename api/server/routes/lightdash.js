@@ -29,11 +29,7 @@ router.get('/auth-status', optionalLightdashAuth, async (req, res) => {
           timeout: 5000,
           validateStatus: (status) => status < 500
         }),
-        axios.get(`${lightdashUrl}/api/v1/user/get-credential`, {
-          params: {
-            platform: 'Facebook',
-            fieldName: 'long_lived_fb_token'
-          },
+        axios.get(`${lightdashUrl}/api/v1/user/get-credentials`, {
           headers: {
             'Cookie': allCookies,
             'Content-Type': 'application/json'
@@ -51,7 +47,20 @@ router.get('/auth-status', optionalLightdashAuth, async (req, res) => {
           lightdashApiKey: mcpResponse.data.results.apiKey,
           projectId: mcpResponse.data.results.projectId,
           defaultSpaceId: mcpResponse.data.results.defaultSpaceId,
-          fbToken: credentialsResponse.data.results.fieldValue
+          facebook: {
+            accountIds: credentialsResponse.data?.results["Facebook"].accounts_data.map((account) => account.account_id).join(','),
+            token: credentialsResponse.data?.results["Facebook"].long_lived_fb_token
+          },
+          google: {
+            accountIds: credentialsResponse.data?.results["Google"].accounts_data.map((account) => {
+              if (account.customer_manager_id) {
+                return `${account.account_id}-${account.customer_manager_id}`;
+              } else {
+                return account.account_id;
+              }
+            }).join(','),
+            token: credentialsResponse.data?.results["Google"].refresh_token
+          }
         });
       }
 
