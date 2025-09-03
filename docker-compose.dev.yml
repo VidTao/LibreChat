@@ -38,13 +38,15 @@ services:
       - ./images:/app/client/public/images
       - ./uploads:/app/uploads
       - ./logs:/app/api/logs
-      # Mount the MCP server directory
+      # Mount both MCP server directories
       - "C:\\Inceptly\\facebook-mcp\\facebook-ads-mcp-server:/app/mcp-servers/facebook-ads-mcp-server"
+      - "C:\\Inceptly\\google-ads-mcp\\mcp-google-ads:/app/mcp-servers/google-ads-mcp-server"
     # Just install Python dependencies, then let LibreChat start with its default CMD
     entrypoint: >
       sh -c "
         echo 'Installing MCP Python dependencies...' &&
         pip install --break-system-packages -r /app/mcp-servers/facebook-ads-mcp-server/requirements.txt &&
+        pip install --break-system-packages -r /app/mcp-servers/google-ads-mcp-server/requirements.txt &&
         echo 'Dependencies installed, starting LibreChat...' &&
         exec npm run backend
       "
