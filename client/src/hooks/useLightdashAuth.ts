@@ -81,7 +81,8 @@ export const useLightdashAuth = () => {
       }
 
       const { mcpCredentials } = authStatus;
-      
+      const fbAccountIds = mcpCredentials.facebook.accountIds;
+      const googleAccountIds = mcpCredentials.google.accountIds;
       try {
         const [dbtMcpResponse, fbAdsMcpResponse] = await Promise.all([
          axios.post('/api/user/plugins', {
@@ -97,9 +98,19 @@ export const useLightdashAuth = () => {
           pluginKey: 'mcp_fb-ads-mcp-server',
           action: 'install',
           auth: {
-            MCP_FB_TOKEN: mcpCredentials.fbToken,
+            MCP_FB_TOKEN: mcpCredentials.facebook.token,
+            MCP_FB_ACCOUNT_IDS: fbAccountIds,
           }
-        })]);
+        }),
+        axios.post('/api/user/plugins', {
+          pluginKey: 'mcp_google-ads-mcp-server',
+          action: 'install',
+          auth: {
+            MCP_GOOGLE_REFRESH_TOKEN: mcpCredentials.google.token,
+            MCP_GOOGLE_ACCOUNT_IDS: googleAccountIds,
+          }
+        })
+      ]);
         console.log('✅ MCP credentials saved after LibreChat authentication');
       } catch (error) {
         console.warn('Failed to save MCP credentials:', error);
