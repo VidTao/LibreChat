@@ -94,6 +94,14 @@ export const useLightdashAuth = () => {
             MCP_LIGHTDASH_DEFAULT_SPACE_ID: mcpCredentials.defaultSpaceId,
           }
         }),
+        axios.post('/api/user/plugins', {
+          pluginKey: 'mcp_lightdash-analytics',
+          action: 'install',
+          auth: {
+            MCP_LIGHTDASH_API_KEY: mcpCredentials.lightdashApiKey,
+            MCP_LIGHTDASH_PROJECT_ID: mcpCredentials.projectId,
+          }
+        }),
          axios.post('/api/user/plugins', {
           pluginKey: 'mcp_fb-ads-mcp-server',
           action: 'install',
