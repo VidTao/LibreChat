@@ -191,10 +191,6 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
         oauthEnd,
       });
 
-      logger.info(`[MCP] Tool ${toolKey} returned result type: ${Array.isArray(result) ? 'array' : typeof result}`);
-      if (Array.isArray(result)) {
-        logger.info(`[MCP] Result array length: ${result.length}, first element type: ${result[0]?.type || typeof result[0]}`);
-      }
 
       if (isAssistantsEndpoint(provider) && Array.isArray(result)) {
         logger.info(`[MCP] Returning first element for assistants endpoint`);
@@ -207,37 +203,38 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
       // Check if the result contains a Lightdash directive
       if (Array.isArray(result) && result.length > 0) {
         const firstResult = result[0];
-        const textContent = firstResult?.text || firstResult?.content || '';
-        
+        const textContent = firstResult?.text || firstResult[0]?.text || firstResult?.content || '';
+        logger.info(`[MCP] Text content: ${textContent}`);
         logger.info(`[MCP] Checking tool ${toolKey} for Lightdash directive, text length: ${textContent.length}`);
         
         // Check if this is a Lightdash embed directive response
-        if (toolKey.includes('lightdash_get_embed_url')) {
+        if (toolKey.includes('embed')) {
           logger.info(`[MCP] Tool is lightdash_get_embed_url, checking for directive in text`);
-          if (textContent.includes(':::lightdash-')) {
+          if (textContent.includes('::lightdash-')) {
             logger.info(`[MCP] Found Lightdash directive in response!`);
             
             // Extract the directive from the response
-            const directiveMatch = textContent.match(/(:::lightdash-(?:dashboard|chart)\{[^}]+\}\s*:::)/s);
+            const directiveMatch = textContent.match(/(::lightdash-(?:dashboard|chart)\[.*?\])/s);
+            logger.info(`[MCP] Directive match: ${directiveMatch}`);
             if (directiveMatch) {
               logger.info(`[MCP] Successfully extracted directive, returning as artifact format`);
               // Return in OpenAI image tool format: [response_array, {content: artifact_content}]
               const response = [
                 {
                   type: ContentTypes.TEXT,
-                  text: "Dashboard has been embedded. You can view it directly above."
+                  text: directiveMatch[1]
                 }
               ];
-              const artifact = {
-                content: directiveMatch[1]
-              };
+              // const artifact = {
+              //   content: directiveMatch[1]
+              // };
               logger.info(`[MCP] Returning artifact response with directive: ${directiveMatch[1].substring(0, 100)}...`);
-              return [response, artifact];
+              return response;
             } else {
-              logger.warn(`[MCP] Directive pattern not matched despite containing :::lightdash-`);
+              logger.warn(`[MCP] Directive pattern not matched despite containing ::lightdash-`);
             }
           } else {
-            logger.warn(`[MCP] No :::lightdash- found in response text`);
+            logger.warn(`[MCP] No ::lightdash- found in response text`);
           }
         }
       }
@@ -275,7 +272,7 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
   };
 
   // All MCP tools use content and artifact format
-  const responseFormat = AgentConstants.CONTENT_AND_ARTIFACT;
+  const responseFormat = AgentConstants.CONTENT_ONLY;
 
   const toolInstance = tool(_call, {
     schema,

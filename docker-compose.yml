@@ -21,7 +21,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=3080
-      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - MONGO_URI=${MONGO_URI:-mongodb://mongodb:27017/LibreChat}
       - MEILI_HOST=http://meilisearch:7700
       - RAG_PORT=${RAG_PORT:-8000}
       - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
@@ -52,9 +52,13 @@ services:
     container_name: chat-mongodb
     image: mongo
     restart: always
-    user: "${UID}:${GID}"
+    # user: "${UID}:${GID}"
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+     - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+     - MONGO_INITDB_DATABASE=LibreChat
     volumes:
       - ./data-node:/data/db
   meilisearch:

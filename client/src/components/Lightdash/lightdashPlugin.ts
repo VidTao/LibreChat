@@ -20,7 +20,6 @@ export const lightdashPlugin: Pluggable = () => {
           };
         }
       }
-
       // Process lightdash directives
       if (node.name === 'lightdash-chart' || node.name === 'lightdash-dashboard') {
         const visualizationType = node.name.replace('lightdash-', '') as 'chart' | 'dashboard';
