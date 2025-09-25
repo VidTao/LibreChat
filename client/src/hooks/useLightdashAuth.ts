@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { useAuthContext } from './AuthContext'; // ← Add this import
+import { useAuthContext } from './AuthContext';
 
 export const useLightdashAuth = () => {
   const [isLightdashEnabled, setIsLightdashEnabled] = useState(false);
@@ -9,12 +9,26 @@ export const useLightdashAuth = () => {
   const [hasChecked, setHasChecked] = useState(false);
   const mountedRef = useRef(true);
   
-  const { isAuthenticated, token } = useAuthContext(); // ← Get LibreChat auth state
+  const { isAuthenticated, token } = useAuthContext();
 
   useEffect(() => {
     let isCancelled = false;
 
     const checkAuthentication = async () => {
+      // ✅ FIX: Check if we already have valid auth state cached
+      const cachedAuthStatus = sessionStorage.getItem('lightdash_auth_status');
+      if (cachedAuthStatus && hasChecked) {
+        try {
+          const parsed = JSON.parse(cachedAuthStatus);
+          setAuthStatus(parsed);
+          setIsLightdashEnabled(true);
+          setLoading(false);
+          return;
+        } catch (e) {
+          // Invalid cache, continue with normal flow
+        }
+      }
+
       // Prevent multiple calls
       if (hasChecked || isCancelled) return;
 
@@ -22,7 +36,7 @@ export const useLightdashAuth = () => {
         // Check if integration is enabled
         const configResponse = await axios.get('/api/lightdash/config');
         
-        if (isCancelled) return; // Component unmounted
+        if (isCancelled) return;
 
         if (configResponse.data.integrationEnabled) {
           if (mountedRef.current) {
@@ -32,10 +46,14 @@ export const useLightdashAuth = () => {
           // Check auth status
           const authResponse = await axios.get('/api/lightdash/auth-status');
           
-          if (isCancelled) return; // Component unmounted
+          if (isCancelled) return;
 
           if (mountedRef.current) {
             setAuthStatus(authResponse.data);
+            // ✅ FIX: Cache the auth status
+            if (authResponse.data.authenticated) {
+              sessionStorage.setItem('lightdash_auth_status', JSON.stringify(authResponse.data));
+            }
           }
           
           // If authenticated, dispatch event ONCE
@@ -70,13 +88,18 @@ export const useLightdashAuth = () => {
       isCancelled = true;
       mountedRef.current = false;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []); // Keep empty dependency array
 
-  // ✅ NEW: Save MCP credentials after LibreChat authentication is complete
+  // ✅ FIX: Save MCP credentials after LibreChat authentication is complete
   useEffect(() => {
     const saveMcpCredentials = async () => {
       // Wait for both Lightdash and LibreChat to be authenticated
       if (!isAuthenticated || !token || !authStatus?.authenticated || !authStatus?.mcpCredentials) {
+        return;
+      }
+
+      // ✅ FIX: Only save credentials once, not on every auth state change
+      if (sessionStorage.getItem('mcp_credentials_saved') === 'true') {
         return;
       }
 
@@ -120,13 +143,14 @@ export const useLightdashAuth = () => {
         })
       ]);
         console.log('✅ MCP credentials saved after LibreChat authentication');
+        sessionStorage.setItem('mcp_credentials_saved', 'true');
       } catch (error) {
         console.warn('Failed to save MCP credentials:', error);
       }
     };
 
     saveMcpCredentials();
-  }, [isAuthenticated, token, authStatus]); // ← Run when LibreChat auth or Lightdash auth changes
+  }, [isAuthenticated, token, authStatus?.authenticated]); // ✅ FIX: Only depend on auth state, not full authStatus object
 
   return {
     isLightdashEnabled,
@@ -134,4 +158,4 @@ export const useLightdashAuth = () => {
     loading,
     hasChecked
   };
-}; 
+};
