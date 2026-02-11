@@ -42,24 +42,29 @@ router.get('/auth-status', optionalLightdashAuth, async (req, res) => {
       // Construct mcpCredentials after getting all responses
       const mcpCredentials = {};
 
+      logger.info("mcpResponse.data");
+      logger.info(mcpResponse.data);
+      logger.info("credentialsResponse.data");
+      logger.info(credentialsResponse.data);
+
       if (mcpResponse.status === 200 && mcpResponse.data?.results && credentialsResponse.data?.results && credentialsResponse.data?.results) {
         Object.assign(mcpCredentials, {
           lightdashApiKey: mcpResponse.data.results.apiKey,
           projectId: mcpResponse.data.results.projectId,
           defaultSpaceId: mcpResponse.data.results.defaultSpaceId,
           facebook: {
-            accountIds: credentialsResponse.data?.results["Facebook"].accounts_data.map((account) => account.account_id).join(','),
-            token: credentialsResponse.data?.results["Facebook"].long_lived_fb_token
+            accountIds: credentialsResponse.data?.results["Facebook"]?.accounts_data.map((account) => account.account_id).join(','),
+            token: credentialsResponse.data?.results["Facebook"]?.long_lived_fb_token
           },
           google: {
-            accountIds: credentialsResponse.data?.results["Google"].accounts_data.map((account) => {
+            accountIds: credentialsResponse.data?.results["Google"]?.accounts_data.map((account) => {
               if (account.customer_manager_id) {
                 return `${account.account_id}-${account.customer_manager_id}`;
               } else {
                 return account.account_id;
               }
             }).join(','),
-            token: credentialsResponse.data?.results["Google"].refresh_token
+            token: credentialsResponse.data?.results["Google"]?.refresh_token
           }
         });
       }
