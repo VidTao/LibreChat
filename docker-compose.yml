@@ -38,7 +38,9 @@ services:
         source: ./.env
         target: /app/.env
       - ./librechat.yaml:/app/librechat.yaml
-      - ../service-accounts/bratrax-78c5b6786fc2.json:/app/bratrax-78c5b6786fc2.json
+      - type: bind
+        source: ../service-accounts/bratrax-78c5b6786fc2.json
+        target: /app/credentials/bratrax-78c5b6786fc2.json
       - ./toolbox:/app/toolbox
       - ./images:/app/client/public/images
       - ./uploads:/app/uploads
