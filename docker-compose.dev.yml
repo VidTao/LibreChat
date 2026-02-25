@@ -34,7 +34,7 @@ services:
         source: ./.env
         target: /app/.env
       - ./librechat.yaml:/app/librechat.yaml
-      - ./bratrax-78c5b6786fc2.json:/app/bratrax-78c5b6786fc2.json
+      - ../service-accounts/bratrax-78c5b6786fc2.json:/app/bratrax-78c5b6786fc2.json
       - ./images:/app/client/public/images
       - ./uploads:/app/uploads
       - ./logs:/app/api/logs
